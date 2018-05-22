@@ -1,0 +1,444 @@
+<?php
+
+/**
+ * @file
+ * Default theme implementation to display the basic html structure of a single
+ * Drupal page.
+ *
+ * Variables:
+ * - $css: An array of CSS files for the current page.
+ * - $language: (object) The language the site is being displayed in.
+ *   $language->language contains its textual representation.
+ *   $language->dir contains the language direction. It will either be 'ltr' or 'rtl'.
+ * - $rdf_namespaces: All the RDF namespace prefixes used in the HTML document.
+ * - $grddl_profile: A GRDDL profile allowing agents to extract the RDF data.
+ * - $head_title: A modified version of the page title, for use in the TITLE
+ *   tag.
+ * - $head_title_array: (array) An associative array containing the string parts
+ *   that were used to generate the $head_title variable, already prepared to be
+ *   output as TITLE tag. The key/value pairs may contain one or more of the
+ *   following, depending on conditions:
+ *   - title: The title of the current page, if any.
+ *   - name: The name of the site.
+ *   - slogan: The slogan of the site, if any, and if there is no title.
+ * - $head: Markup for the HEAD section (including meta tags, keyword tags, and
+ *   so on).
+ * - $styles: Style tags necessary to import all CSS files for the page.
+ * - $scripts: Script tags necessary to load the JavaScript files and settings
+ *   for the page.
+ * - $page_top: Initial markup from any modules that have altered the
+ *   page. This variable should always be output first, before all other dynamic
+ *   content.
+ * - $page: The rendered page content.
+ * - $page_bottom: Final closing markup from any modules that have altered the
+ *   page. This variable should always be output last, after all other dynamic
+ *   content.
+ * - $classes String of classes that can be used to style contextually through
+ *   CSS.
+ *
+ * @see template_preprocess()
+ * @see template_preprocess_html()
+ * @see template_process()
+ *
+ * @ingroup themeable
+ */
+?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML+RDFa 1.0//EN"
+  "http://www.w3.org/MarkUp/DTD/xhtml-rdfa-1.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<?php print $language->language; ?>" version="XHTML+RDFa 1.0" dir="<?php print $language->dir; ?>"<?php print $rdf_namespaces; ?>>
+
+<head profile="<?php print $grddl_profile; ?>">
+  <?php print $head; ?>
+  <title><?php print $head_title; ?></title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,400i,600,700" rel="stylesheet">
+  <?php print $styles; ?>
+  <?php print $scripts; ?>
+  <!-- AUSTIN SCRIPTS/STYLES -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+</head>
+<script>
+  
+// Search Page Functionallity
+var typingTimer;                
+var doneTypingInterval = 400;
+
+function searchKeyUp() {
+  //console.log('keyup');
+  clearTimeout(typingTimer);
+  if (jQuery('#search-form input').val()) {
+    typingTimer = setTimeout(searchSubmit, doneTypingInterval);
+  };
+};
+
+function clearResults() {
+  jQuery('#search-page-results-news, #search-page-results-other, #search-page-results-topics, #search-page-results-topics').html("") 
+}
+
+function popIn() {
+  jQuery('.search-page-results-result').css({'opacity':'1'})
+};
+
+function popOut() {
+  jQuery('.search-page-results-result').css({'opacity':'0'})
+};
+
+
+function outputResultsViewAll(response) {
+  console.log('response view all', response)
+};
+      
+function outputResults(response) {
+  //console.log(response);
+  var query=window.location.search;
+  console.log(query);
+  
+  
+  
+  jQuery('#search-page-filter-row').css({"display":"block"});
+  console.log("show filter");
+  jQuery('#search-page-preview-news, #search-page-preview-topics').css({'display':'none'});
+  jQuery('#search-page-other').css({'display':'block'});
+  popOut();
+  //setTimeout(clearResults, 300);
+  clearResults();
+  
+  var $resultCount = 0;
+  var $newsCount = 0;
+  var $otherCount = 0;
+  
+  var $resultIds = response['resultIds'];
+  var $results = response['results'];
+  var $noResults = response['noResults'];
+  var $topics = response['topics'];
+  var $topicsId = response['topicsId'];
+  
+  
+  if($topicsId) {
+    for(var i=0; i<$topicsId.length; i++) {
+      var $topic = $topics[i];
+      var $topicId = $topicsId[i];
+      var markupTopics = '<div class="search-page-topics-result"><a href="taxonomy/term/' + $topicId + '">' + $topic + '</a></div>';
+      if($topicsId != null){
+        jQuery('#search-page-results-topics').append(markupTopics);
+      };
+    };
+  };
+  if(jQuery('.search-page-topics-result').length < 1){
+    console.log('no topics');
+    var markupTopicsNone = '<div class="search-page-topics-result" id="topics-none"><p>NO TOPIC RESULTS</p></div>';
+    jQuery('#search-page-results-topics').append(markupTopicsNone); 
+  } else {
+    //console.log(jQuery('.search-page-topics-result').length); 
+  }
+  
+  function runThroughResults() {
+    for(var i=0; i<$resultIds.length; i++) {
+      $resultCount = $resultCount + 1;//console.log($resultCount);
+      
+      var $id = $resultIds[i];
+      var $result = $results[$id];
+      var $type = $result.type;
+      var $nid = $result.nid;
+      var $title = $result.title;  
+      
+      if($type == "newsitem") {
+        $newsCount = $newsCount + 1;
+        //console.log('news count = ', $newsCount);
+        var $tid = $result.topic_name;
+        var tid = $result.newsitem_topic['und'][0].tid;
+        //console.log(tid);
+        var $createdStamp = $result.created;
+        var d = new Date($createdStamp*1000);
+        var dDate = d.getDate();
+        var dMonth = d.getMonth();
+        var monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        var dYear = d.getFullYear();
+        var $createdDate = (monthShort[dMonth] + " " + dDate + ", " + dYear);
+      };
+      
+      if($type == "profile") {
+        $otherCount = $otherCount + 1;
+        //console.log('other count = ', $otherCount);
+        var $tid = $result.topic_name;
+        var $createdStamp = null;
+        $createdDate = $createdStamp;
+      };
+      
+      if($type == "outcome") {
+        $otherCount = $otherCount + 1;
+        //console.log('other count = ', $otherCount);
+        var $tid = null; 
+        var $createdStamp = null;
+        $createdDate = $createdStamp;
+      };
+
+      var markupNews = '<div class="search-page-results-result"><div class="search-page-results-result-top"><div class="search-page-results-result-topic"><a href="taxonomy/term/'+ tid +'">&#47;&#47; ' + $tid + '</a></div><div class="search-page-results-result-title"><a href="node/'+ $nid +'">' + $title + '</a></div></div><div class="search-page-results-result-prm"><div class="search-page-results-result-date">' + $createdDate + '</div><div class="search-page-results-result-read-more"><a href="node/' + $nid + '"<i class="fa fa-arrow-right" aria-hidden="true"></i></a></div></div></div>';
+      
+      var markupProfile = '<div class="search-page-results-result"><div class="search-page-results-result-top"><div class="search-page-results-result-topic"><a href="taxonomy/term/'+ tid +'">&#47;&#47; ' + $tid + '</a></div><div class="search-page-results-result-title"><a href="node/'+ $nid +'">' + $title + '</a></div></div><div class="search-page-results-result-prm"><div class="search-page-results-result-read-more"><a href="node/' + $nid + '"<i class="fa fa-arrow-right" aria-hidden="true"></i></a></div></div></div>';
+      
+      var markupOutcomes = '<div class="search-page-results-result"><div class="search-page-results-result-top"><div class="search-page-results-result-title"><a href="node/'+ $nid +'">' + $title + '</a></div></div><div class="search-page-results-result-prm"><div class="search-page-results-result-read-more"><a href="node/' + $nid + '"<i class="fa fa-arrow-right" aria-hidden="true"></i></a></div></div></div>';
+      
+      var markupNewsMore = '<div class="search-page-results-result" id="news-more"><p><a onclick="viewAllSubmit()" class="more-view-all-link view-all-link-news" href="#">MORE NEWS RESULTS<i class="fa fa-arrow-right" aria-hidden="true"></i></a></p></div>';
+
+      var markupOtherMore = '<div class="search-page-results-result" id="other-more"><p><a onclick="viewAllSubmit()" class="more-view-all-link" href="#">MORE RESULTS<i class="fa fa-arrow-right" aria-hidden="true"></i></a></p></div>';
+      
+      function addResultsNews() {
+        jQuery('#search-page-results-news').append(markupNews);
+      };
+      
+      function addResultsProfile() {
+        jQuery('#search-page-results-other').append(markupProfile);
+      };
+      
+      function addResultsOutcome() {
+        jQuery('#search-page-results-other').append(markupOutcomes);
+      };
+
+
+      if($type == "newsitem") {
+        //setTimeout(addResultsNews, 400);
+        //setTimeout(popIn, 500);
+        if($newsCount <= 5){
+          addResultsNews();
+          setTimeout(popIn, 200);
+        } else {
+          if(!jQuery('#news-more').length){
+            jQuery('#search-page-results-news').append(markupNewsMore);
+          };
+        };
+      };
+      
+      if($type == "profile") {
+        //setTimeout(addResultsOther, 400);
+        //setTimeout(popIn, 500);
+        if($otherCount <= 5) {
+          addResultsProfile();
+          setTimeout(popIn, 200);
+        } else {
+          if(!jQuery('#other-more').length) {
+            jQuery('#search-page-results-other').append(markupOtherMore);
+          };
+        };
+      };
+      
+      if($type == "outcome") {
+        //setTimeout(addResultsOther, 400);
+        //setTimeout(popIn, 500);
+        if($otherCount <= 5) {
+          addResultsOutcome();
+          setTimeout(popIn, 200);
+        } else {
+          if(!jQuery('#other-more').length) {
+            jQuery('#search-page-results-other').append(markupOtherMore);
+          };
+        };
+      };
+      
+    }
+    
+    if(jQuery('#search-page-results-other .search-page-results-result').length < 1){
+      //console.log(jQuery('#search-page-results-other .search-page-results-result').length);
+      var markupOtherNone = '<div class="search-page-results-result" id="other-none"><p>NO RESULTS</p></div>';
+      jQuery('#search-page-results-other').append(markupOtherNone);
+    } else {
+      //console.log(jQuery('#search-page-results-other .search-page-results-result').length); 
+    }
+    
+    if(jQuery('#search-page-results-news .search-page-results-result').length < 1){
+      //console.log(jQuery('#search-page-results-news .search-page-results-result').length);
+      var markupNewsNone = '<div class="search-page-results-result" id="news-none"><p>NO NEWS RESULTS</p></div>';
+      jQuery('#search-page-results-news').append(markupNewsNone);
+    } else {
+      //console.log(jQuery('#search-page-results-other .search-page-results-result').length); 
+    }
+    //console.log($results);  
+  }
+  
+  if($noResults == "0") {
+    console.log('something found, runThroughResults');
+    runThroughResults();
+  } else {
+    console.log('nothing found');
+    
+    var markupNewsNone = '<div class="search-page-results-result" id="news-none"><p>NO NEWS RESULTS</p></div>';
+    var markupOtherNone = '<div class="search-page-results-result" id="other-none"><p>NO RESULTS</p></div>';
+    //console.log(markupNewsNone)
+    jQuery('#search-page-results-news').append(markupNewsNone);
+    jQuery('#search-page-results-other').append(markupOtherNone);
+    
+  };
+  
+  var $searchTerms = jQuery('#search-form input').val();
+  jQuery('a.more-view-all-link').attr('href','/contenthub/searchview/'+$searchTerms);
+  
+};
+
+function searchSubmit() {
+  $searchTerms = jQuery('#search-form input').val();
+  console.log($searchTerms);
+  console.log('step 1');
+  // Start doing Google Stuff
+  //getLocation();
+  ajaxCall($searchTerms);
+};
+
+function ajaxCall($searchTerms) {
+  console.log('step 2');
+  jQuery.get('/contenthub/ajax/search/'+$searchTerms, ajaxCallBack);
+};
+
+function ajaxCallBack(response) {
+  console.log('step 3');
+  //console.log(response);
+  outputResults(response);
+};
+
+function viewAllSubmit() {
+  $searchTerms = jQuery('#search-form input').val();
+  console.log('search view all = ', $searchTerms)
+  ajaxCallView($searchTerms);
+};
+
+function ajaxCallView($searchTerms) {
+  console.log('search view all step 1', $searchTerms);
+  jQuery.get('contenthub/searchview/'+$searchTerms, ajaxCallBackView);
+};
+
+function ajaxCallBackView(response) {
+  console.log('search view all step 2');
+  outputResultsViewAll(response);
+};
+
+
+
+  
+</script>
+<body class="<?php print $classes; ?>" <?php print $attributes;?>>
+  
+  
+  
+  <div id="skip-link">
+    <a href="#main-content" class="element-invisible element-focusable"><?php print t('Skip to main content'); ?></a>
+  </div>
+  
+  <div id="content-hub-menu">
+    <?php
+      //$block = module_invoke('menu', 'block_view', 'menu-panelizer-pages-relationshi');
+      $block = module_invoke('menu', 'block_view', 'menu-content-hub-menu');
+      print render($block['content']);
+    ?>
+  </div>
+
+  <div id="butler-u-header">
+    <div class="max-width-container">
+      <div id="butler-u-header-logo"></div>
+    </div>
+    <div id="butler-hub-header-toolbar">
+    <div class="max-width-container">
+      <?php //print $head_title_array['title']; ?>
+        <div id="butler-hub-header-toolbar-breadcrumb">Butler Stories</div>
+        <div id="butler-hub-header-toolbar-right">
+          <div id="butler-hub-header-toolbar-topics-button">
+            Topics <i class="fa fa-th-large" aria-hidden="true"></i>
+            <ul id="butler-hub-header-toolbar-topics-dropdown">
+              <div id="topics-close"><i class="fa fa-times"></i></div>
+              <?php $terms = array();
+                $v = taxonomy_vocabulary_machine_name_load('topics');
+                $query = new EntityFieldQuery();
+                $result = $query
+                  ->entityCondition('entity_type', 'taxonomy_term')
+                  ->propertyCondition('vid', $v->vid)
+                  //->fieldCondition('field_status', 'value', 1) // If your field name is 'field_status'
+                  ->execute();
+                if (!empty($result['taxonomy_term'])) {
+                  $terms = entity_load('taxonomy_term', array_keys($result['taxonomy_term']));
+          
+                };
+                foreach($terms as $term ) {
+                  echo "<li class='butler-hub-header-toolbar-topics-dropdown-item'><a href='/taxonomy/term/";
+          print $term->tid; echo"'>";
+                  print $term->name; echo "</a></li>";
+                };
+              ?>
+            </ul>
+          </div>
+          <form id="butler-hub-header-toolbar-search-form">
+            <input type="text" name="search" placeholder="&#xf002  SEARCH">
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <?php print $page_top; ?>
+  <?php print $page; ?>
+  <?php print $page_bottom; ?>
+  
+  <div id="butler-hub-footer">
+	  <?php //print $head_title_array['title']; ?>
+    <div class="max-width-container">
+      <div id="butler-hub-footer-breadcrumb">BUTLER STORIES</div>
+      <div id="butler-hub-footer-nav-row">
+        <!--<a href="/magazine">Butler Magazine</a>-->
+        <a href="/newsroom">Newsroom</a>
+        <a href="/outcomes">Outcomes</a>
+        <a href="/campaign-a">Campaign</a>
+      </div>
+    </div>
+  </div>
+  
+  
+  
+</body>
+</html>
+
+
+<div id="search-page"> 
+    
+  <div class="search-page-row" id="search-page-search-bar-row">
+    <form id="search-form" method="POST" name="search-form" aria-label="search page form">
+      <input type="text" class='search_terms' name="search_terms" title="SEARCH" placeholder="&#xf002 SEARCH" onkeyup="searchKeyUp()" />
+    </form>
+    <div id="search-close"><i class="fa fa-times"></i></div>
+  </div>
+  
+  <div class="search-page-row" id="search-page-filter-row">
+    <div class="search-page-filter-control" id="search-page-filter-control-a"><a href="#">TOP RESULTS</a></div>
+    <div class="search-page-filter-control" id="search-page-filter-control-b"><a class="view-all-link" href="/view-all-content?type=all">SEE ALL RESULTS</a></div>
+  </div>
+  
+  <div id="search-page-topics">
+    <p>TOPICS</p>
+    <div id="search-page-preview-topics">
+      <?php
+        print views_embed_view("topics_taxonomy_terms_view","block");
+      ?>
+    </div>
+    <div id="search-page-results-topics">
+    
+    </div>
+  </div>
+  
+  <div id="search-page-results">
+    <div class="search-page-results-container" id="search-page-news">
+      <p>RECENT NEWS</p>
+      <a href="/view-all-content?=type=news" class="view-all view-all-link-news">VIEW ALL</a>
+      <div id="search-page-preview-news">
+        <?php
+          print views_embed_view("newsroom_recent_stories_view","block");
+        ?>
+      </div>
+      <div id="search-page-results-news">
+      
+      </div>
+    </div>
+    <div class="search-page-results-container" id="search-page-other">
+      <p>OTHER RESULTS</p>
+      <a href="/view-all-content?=type=all" class="view-all view-all-link">VIEW ALL</a>
+      <div id="search-page-results-other">
+      
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,6 @@
+name = LodgeWeb
+description = Custom module LodgeWeb Deployment
+core = 7.x
+package = Lodge
+files[] = lodgeweb.module
+
