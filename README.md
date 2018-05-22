@@ -1,2 +1,2 @@
-# LodgeWeb
-Lodge Design Web
+# LodgeWeb-module
+LodgeWeb(module)
